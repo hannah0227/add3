@@ -21,9 +21,7 @@ class user_app_callback_class(app_callback_class):
     def __init__(self):
         super().__init__()
         self.new_variable = 42  # New variable example
-
-    def new_function(self):  # New function example
-        return "The meaning of life is: "
+        self.prev_overlap = 0.0 #<<<<<<<<<<<<<<<<<<<<<<<<
 
 # -----------------------------------------------------------------------------------------------
 # User-defined callback function
@@ -39,7 +37,7 @@ def app_callback(pad, info, user_data):
 
     # Using the user_data to count the number of frames
     user_data.increment()
-    count = user_data.get_count() # << 추가된 부분: 현재 프레임 카운트를 시간 대용으로 사용
+    count = user_data.get_count()
     string_to_print = f"Frame count: {user_data.get_count()}\n"
 
     # Get the caps from the pad
@@ -61,7 +59,8 @@ def app_callback(pad, info, user_data):
     danger_3 = 70 #danger level threshold
     danger_2 = 10
     danger_1 = 3
-    current_frame_track_ids = set() # << 추가된 부분: 현재 프레임의 활성 트랙 ID 관리용
+
+    current_frames_last_overlap = 0.0 #<<<<<<<<<<<<<<<<<<<<<<
     
     for detection in detections:
         danger = 0 # danger level 
@@ -75,52 +74,29 @@ def app_callback(pad, info, user_data):
         # calculate variations from coordinates
         box_width = xmax - xmin 
         box_height = ymax - ymin
-        overlap = 100.0*(box_width*box_height)/(width*height)
+        overlap = 100*(box_width*box_height)/(width*height)
         
-        prev_box_width = box_width #previous box width
-        prev_box_height = box_height #previous box height
+        current_frames_last_overlap = overlap #<<<<<<<<<<<<<<<<<<<<<<
+
         if label == "mouse":
-            detection_count += 1
             # Get track ID
             track_id = 0
             track = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
             if len(track) == 1:
                 track_id = track[0].get_id()
-                current_frame_track_ids.add(track_id) # << 추가된 부분
-            string_to_print += f"ID: {track_id}, Conf: {confidence:.2f}, Overlap: {overlap:.2f}%\n"
+            string_to_print += (f"Detection: ID: {track_id} Label: {label} Confidence: {confidence:.2f}\n")
+            detection_count += 1
 
-           # --- ▼▼▼ 핵심 추가 로직: 객체 상태 추적 및 분석 ▼▼▼ ---
-            if track_id in user_data.previous_detections: # << 추가된 조건문: 이전 정보가 있는지 확인
-                prev_info = user_data.previous_detections[track_id]
-                prev_overlap = prev_info['overlap']
-                prev_frame_time = prev_info['frame_time']
-
-                delta_time = current_frame_time - prev_frame_time
-
-                if delta_time > 0: 
-                    delta_overlap = overlap - prev_overlap
-                    overlap_velocity = delta_overlap / delta_time 
-
-                    status = ""
-                    # 임계값은 실험을 통해 조정 필요
-                    if delta_overlap > 0.1: 
-                        status = f"Approaching (Rate: {overlap_velocity:+.2f} %/frame)"
-                    elif delta_overlap < -0.1: 
-                        status = f"Receding (Rate: {overlap_velocity:+.2f} %/frame)"
-                    else:
-                        status = "Stationary (or minor change)"
-                    string_to_print += f"    └ Status: {status}\n"
-
-                    if frame is not None: # 프레임에 상태 정보 그리기
-                         cv2.putText(frame, f"ID:{track_id} {status}", (xmin, ymin - 10), 
-                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-
-            user_data.previous_detections[track_id] = {
-                'overlap': overlap,
-                'frame_time': current_frame_time,
-                'bbox': bbox 
-            }
-            
+    if current_frames_last_overlap > user_data.prev_overlap:
+        print("approaching")
+    elif current_frames_last_overlap < user_data.prev_overlap:
+        print("moving away")
+    else:
+        print("no change")
+    
+    # Update prev_overlap in user_data for the next frame's comparison
+    user_data.prev_overlap = current_frames_last_overlap
+    
     if user_data.use_frame:
         # Note: using imshow will not work here, as the callback function is not running in the main thread
         # Let's print the detection count to the frame
@@ -135,6 +111,7 @@ def app_callback(pad, info, user_data):
     print(string_to_print)
     #this is kick
     print(f"overlap: {overlap, box_width,box_height}")
+
     if overlap > danger_3 :
         danger = 3  # collision!
     elif overlap > danger_2 :
