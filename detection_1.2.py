@@ -87,21 +87,21 @@ def app_callback(pad, info, user_data):
             string_to_print += (f"Detection: ID: {track_id} Label: {label} Confidence: {confidence:.2f}\n")
             detection_count += 1
 
-
-    if current_frames_last_overlap > user_data.prev_overlap:
-        if current_frames_last_overlap - user_data.prev_overlap > 10:
-            print("very fast approaching \n")
-        elif current_frames_last_overlap - user_data.prev_overlap > 5:
-            print("fast approaching \n")
+    if count % 30 == 0:
+        if current_frames_last_overlap > user_data.prev_overlap:
+            if current_frames_last_overlap - user_data.prev_overlap > 10: #1초에 10프로씩 bb증가가
+                print("very fast approaching \n")
+            elif current_frames_last_overlap - user_data.prev_overlap > 5: #1초에 5프로씩 bb증가가
+                print("fast approaching \n")
+            else:
+                print("approaching \n")
+        elif current_frames_last_overlap < user_data.prev_overlap:
+            print("moving away \n")
         else:
-            print("approaching \n")
-    elif current_frames_last_overlap < user_data.prev_overlap:
-        print("moving away \n")
-    else:
-        print("no change \n")
-    
-    # Update prev_overlap in user_data for the next frame's comparison
-    user_data.prev_overlap = current_frames_last_overlap
+            print("no change \n")
+        
+        # Update prev_overlap in user_data for the next frame's comparison
+            user_data.prev_overlap = current_frames_last_overlap
     
     if user_data.use_frame:
         # Note: using imshow will not work here, as the callback function is not running in the main thread
@@ -113,24 +113,21 @@ def app_callback(pad, info, user_data):
         # Convert the frame to BGR
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         user_data.set_frame(frame)
-
-    print(string_to_print)
+        
     #this is kick
-    print(f"overlap: {overlap, box_width,box_height}")
+    #print(f"overlap: {overlap, box_width,box_height}")
 
     if overlap > danger_3 :
         danger = 3  # collision!
-        print ("very close, ")
     elif overlap > danger_2 :
         danger = 2 # warning
-        print ("close, ")
     elif overlap > danger_1 :
         danger = 1 # on list
-        print ("moderate, ")
     else :
         danger = 0
-        print ("far, ")
-    print(f"danger = {danger}")
+    if count % 30 == 0:
+        print(string_to_print)
+        print(f"danger = {danger}")
         
     return Gst.PadProbeReturn.OK
 
