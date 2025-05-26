@@ -113,13 +113,17 @@ def app_callback(pad, info, user_data):
     print(f"overlap: {overlap, box_width,box_height}")
 
     if overlap > danger_3 :
-        danger = 3  # collision!
+            danger = 3  # collision!
+            print ("very close, ")
     elif overlap > danger_2 :
         danger = 2 # warning
+        print ("close, ")
     elif overlap > danger_1 :
         danger = 1 # on list
+        print ("moderate, ")
     else :
         danger = 0
+        print ("far, ")
     print(f"danger = {danger}")
         
     return Gst.PadProbeReturn.OK
